@@ -289,6 +289,17 @@ tr:hover td {
   max-width: 250px;
 }
 
+.desc-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.desc-link:hover {
+  color: var(--gold-primary);
+  text-decoration: underline;
+}
+
 /*.col-alcohol, .col-size {
     text-align: center;
 }*/

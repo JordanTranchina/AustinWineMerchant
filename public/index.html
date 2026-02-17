@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mezcal Inventory | Austin Wine Merchant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Agave Archives</h1>
+            <div class="subtitle">Curated Mezcal Inventory from Austin Wine Merchant</div>
+        </header>
+
+        <div class="controls">
+            <div class="filter-group">
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search by name, agave type...">
+                </div>
+                <div class="price-inputs">
+                    <input type="number" id="minPriceInput" class="price-input" placeholder="Min $" min="0">
+                    <span class="separator">-</span>
+                    <input type="number" id="maxPriceInput" class="price-input" placeholder="Max $" min="0">
+                </div>
+            </div>
+
+            <div class="actions">
+                <div class="stats" id="stats">
+                    Loading inventory...
+                </div>
+                <button id="refreshBtn" class="refresh-btn">
+                    <span class="refresh-icon">↻</span> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Fetching spirits from the source...</p>
+            </div>
+            <table id="inventoryTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th data-sort="brand">Brand <span class="sort-icon">⇅</span></th>
+                        <th data-sort="maguey">Maguey <span class="sort-icon">⇅</span></th>
+                        <th data-sort="description">Description <span class="sort-icon">⇅</span></th>
+                        <th data-sort="size">Size <span class="sort-icon">⇅</span></th>
+                        <th data-sort="alcohol">ABV <span class="sort-icon">⇅</span></th>
+                        <th data-sort="price" style="text-align: right;">Price <span class="sort-icon">⇅</span></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Rows inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

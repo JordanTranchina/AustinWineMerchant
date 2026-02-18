@@ -26,6 +26,13 @@
                     <span class="search-icon">🔍</span>
                     <input type="text" id="searchInput" class="search-input" placeholder="Search by name, agave type...">
                 </div>
+                <div class="store-filter">
+                    <select id="storeFilter" class="store-select">
+                        <option value="all">All Stores</option>
+                        <option value="Austin Wine Merchant">Austin Wine Merchant</option>
+                        <option value="AB Liquor">AB Liquor</option>
+                    </select>
+                </div>
                 <div class="price-inputs">
                     <input type="number" id="minPriceInput" class="price-input" placeholder="Min $" min="0">
                     <span class="separator">-</span>
@@ -56,6 +63,7 @@
                         <th data-sort="description">Description <span class="sort-icon">⇅</span></th>
                         <th data-sort="size">Size <span class="sort-icon">⇅</span></th>
                         <th data-sort="alcohol">ABV <span class="sort-icon">⇅</span></th>
+                        <th data-sort="source">Store <span class="sort-icon">⇅</span></th>
                         <th data-sort="price" style="text-align: right;">Price <span class="sort-icon">⇅</span></th>
                     </tr>
                 </thead>

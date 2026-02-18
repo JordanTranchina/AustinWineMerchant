@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td class="col-size">${item.size}</td>
                 <td class="col-alcohol">${item.alcohol}</td>
+                <td class="col-store">${item.source || 'Austin Wine Merchant'}</td>
                 <td class="col-price">${item.price}</td>
             `;
       tableBody.appendChild(row);
@@ -104,10 +105,13 @@ document.addEventListener("DOMContentLoaded", () => {
     statsDiv.textContent = `${count} Bottles Discovered`;
   }
 
+  const storeFilter = document.getElementById("storeFilter");
+
   // Search / Filter Listeners
   searchInput.addEventListener("input", applyFiltersAndSort);
   minPriceInput.addEventListener("input", applyFiltersAndSort);
   maxPriceInput.addEventListener("input", applyFiltersAndSort);
+  storeFilter.addEventListener("change", applyFiltersAndSort);
 
   // Sort
   document.querySelectorAll("th[data-sort]").forEach((th) => {
@@ -175,6 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const minPrice = parseFloat(minPriceInput.value) || 0;
     const maxPrice = parseFloat(maxPriceInput.value) || Infinity;
+    const selectedStore = storeFilter.value;
 
     // 1. Filter original list
     let result = originalInventory.filter((item) => {
@@ -187,8 +192,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const matchesNoNegative = negativeTerms.every((term) => !itemText.includes(term));
 
       const matchesPrice = item.priceValue >= minPrice && item.priceValue <= maxPrice;
+      
+      let matchesStore = true;
+      if (selectedStore !== "all") {
+          // Logic: item.source should match. If item.source is undefined, assume "Austin Wine Merchant" (legacy)?
+          // New scraping adds source.
+          const itemSource = item.source || "Austin Wine Merchant";
+          matchesStore = itemSource === selectedStore;
+      }
 
-      return matchesAllPositive && matchesNoNegative && matchesPrice;
+      return matchesAllPositive && matchesNoNegative && matchesPrice && matchesStore;
     });
 
     // 2. Sort filtered list if needed

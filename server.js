@@ -250,10 +250,17 @@ function normalizeSize(size) {
     return size;
 }
 
-if (process.env.NODE_ENV !== 'production') {
+
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-module.exports = app;
+
+
+module.exports = {
+    app,
+    normalizeSize,
+    scrapeAustinWineMerchant
+};

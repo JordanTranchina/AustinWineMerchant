@@ -10,8 +10,38 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
+const { scrapeABLiquor } = require('./abLiquorScraper');
+
 app.get("/api/inventory", async (req, res) => {
   try {
+    // Run both scrapers in parallel
+    const [austinWineResults, abLiquorResults] = await Promise.all([
+        scrapeAustinWineMerchant(),
+        scrapeABLiquor()
+    ]);
+
+    // Combine results
+    const combinedResults = [...austinWineResults, ...abLiquorResults];
+    
+    // Sort by price (optional but good for UX)
+    // Prices are strings "$123.45", need to parse
+    combinedResults.sort((a, b) => {
+        const priceA = parseFloat(a.price.replace(/[^0-9.]/g, '')) || 0;
+        const priceB = parseFloat(b.price.replace(/[^0-9.]/g, '')) || 0;
+        return priceA - priceB;
+    });
+
+    res.json(combinedResults);
+  } catch (error) {
+    console.error("Scraping error:", error);
+    // If one fails, try to return at least something? Or error out?
+    // For now, fail if critical.
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Extracted the original logic into a function
+async function scrapeAustinWineMerchant() {
     const url = "https://www.theaustinwinemerchant.com/spirits.html";
     const response = await axios.get(url, {
       headers: {
@@ -27,9 +57,6 @@ app.get("/api/inventory", async (req, res) => {
         
     $('h1, h2, h3, h4, h5, h6').each((i, el) => {
         const text = $(el).text().trim();
-        // Strict check to avoid "Mezcal Cocktails" or similar if possible, 
-        // but "Mezcal" is likely the section header.
-        // Also ensure it's not a nav item which usually aren't H tags.
         if (text === 'Mezcal' || text === 'MEZCAL') { 
             $mezcalHeader = $(el);
             return false; 
@@ -45,26 +72,15 @@ app.get("/api/inventory", async (req, res) => {
     }
 
     if (!$mezcalHeader) {
-        return res.status(500).json({ error: "Could not find the Mezcal section header." });
+        console.error("Austin Wine Merchant: Could not find Mezcal section header.");
+        return [];
     }
 
     // 2. Find the first table AFTER that header
-    // We traverse next siblings until we find a table
     let $table = $mezcalHeader.nextAll('table').first();
-
-    // If not found in siblings, it might be nested differently.
-    // User's script used regex on the substring, implying the table follows in source order.
-    // If Cheerio traversal fails (e.g. header is inside a div, table is outside), we might need the string approach but FIXED.
     
     if ($table.length === 0) {
-         // Fallback to the string method if traversal fails, but be more careful
          const fullHtml = $.html();
-         // Get the index of the header element in the full HTML
-         // This is tricky with Cheerio. 
-         // Let's rely on the user's regex approach since it was known to work for them?
-         // But implementing it in Node:
-         
-         // Find header index based on the specific header we found
          const headerString = $.html($mezcalHeader); 
          const headerIndex = fullHtml.indexOf(headerString);
          
@@ -72,7 +88,6 @@ app.get("/api/inventory", async (req, res) => {
              const contentAfterHeader = fullHtml.substring(headerIndex);
              const tableMatch = contentAfterHeader.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
              if (tableMatch) {
-                  // Load just this table into cheerio
                   const $temp = cheerio.load(tableMatch[0]);
                   $table = $temp('table');
              }
@@ -80,7 +95,8 @@ app.get("/api/inventory", async (req, res) => {
     }
 
     if ($table.length === 0) {
-         return res.status(500).json({ error: "Found Mezcal header, but no table followed." });
+         console.error("Austin Wine Merchant: Found header but no table.");
+         return [];
     }
 
     const results = [];
@@ -94,8 +110,6 @@ app.get("/api/inventory", async (req, res) => {
           cells.push(cellData);
         });
 
-      // Validation: Ensure it's a product row
-      // Check if it has enough cells and isn't a header "Pack"
       if (cells.length >= 4 && cells[0].toLowerCase() !== "pack" && cells[3] !== "") {
                 const description = cells[3];
                 let brand = "";
@@ -123,7 +137,6 @@ app.get("/api/inventory", async (req, res) => {
                 }
 
                 // --- MAGUEY FORMATTING START ---
-                // List of known magueys for formatting
                 const KNOWN_MAGUEYS = [
                     "Alto", "Amarillo", "Amole", "Ancho", "Arroqueño", "Azul", "Azul Telcruz", 
                     "Barril", "Barril Chino", "Becuela", "Bicuishe", "Blanco", "Brocha", "Bruto", 
@@ -141,8 +154,6 @@ app.get("/api/inventory", async (req, res) => {
                     "Tobaxiche", "Tobaxiche Amarillo", "Tobaziche", "Tripon", "Verde", "Warash"
                 ];
 
-                // Logic: Find all occurrences of known magueys and ensure commas between them
-                // 1. Identify matches in the string
                 if (maguey) {
                     let ranges = [];
                     const lowerMaguey = maguey.toLowerCase();
@@ -150,7 +161,6 @@ app.get("/api/inventory", async (req, res) => {
                     KNOWN_MAGUEYS.forEach(known => {
                         const idx = lowerMaguey.indexOf(known.toLowerCase());
                         if (idx !== -1) {
-                            // Check word boundaries roughly (start or space before, end or space after)
                             const before = idx === 0 || /\s/.test(maguey[idx-1]);
                             const after = (idx + known.length === maguey.length) || /\s/.test(maguey[idx + known.length]);
                             
@@ -160,12 +170,8 @@ app.get("/api/inventory", async (req, res) => {
                         }
                     });
 
-                    // 2. Sort ranges by position
                     ranges.sort((a, b) => a.start - b.start);
 
-                    // 3. Filter overlapping ranges (keep longest usually, or just first found?)
-                    // If "Tobaxiche Amarillo" matches, "Tobaxiche" and "Amarillo" might also match independently.
-                    // We want the longest match covering a region.
                     let cleanRanges = [];
                     if (ranges.length > 0) {
                         cleanRanges.push(ranges[0]);
@@ -174,32 +180,22 @@ app.get("/api/inventory", async (req, res) => {
                             let prev = cleanRanges[cleanRanges.length - 1];
                             
                             if (curr.start < prev.end) {
-                                // Overlap. Keep the one that ends later (longer)
                                 if (curr.end > prev.end) {
                                     cleanRanges.pop();
                                     cleanRanges.push(curr);
                                 }
-                                // Else curr is substring of prev, ignore
                             } else {
                                 cleanRanges.push(curr);
                             }
                         }
                     }
 
-                    // 4. Insert commas between adjacent ranges
-                    // Iterate backwards to avoid messing up indices?
-                    // Or construct new string.
                     if (cleanRanges.length > 1) {
                         let newMaguey = maguey;
-                        // Go backwards
                         for (let i = cleanRanges.length - 1; i > 0; i--) {
                             let curr = cleanRanges[i];
                             let prev = cleanRanges[i-1];
-                            
-                            // Check text between prev.end and curr.start
                             const gap = maguey.substring(prev.end, curr.start);
-                            
-                            // If gap is just spaces, insert comma
                             if (/^\s+$/.test(gap)) {
                                 newMaguey = newMaguey.substring(0, prev.end) + "," + gap + newMaguey.substring(curr.start);
                             }
@@ -209,24 +205,50 @@ app.get("/api/inventory", async (req, res) => {
                 }
                 // --- MAGUEY FORMATTING END ---
 
+                // --- MAGUEY FORMATTING END ---
+
                  results.push({
                     pack: cells[0],
-                    size: cells[1],
+                    size: normalizeSize(cells[1]),
                     alcohol: cells[2],
-                    description: description, // Keep full description for fallback/search
+                    description: description,
                     brand: brand,
-                    maguey: maguey || description, // Fallback to description if extraction failed? No, let's keep extracted.
-                    price: cells[4]
+                    maguey: maguey || description,
+                    price: cells[4],
+                    source: "Austin Wine Merchant" // Added source
                 });
             }
     });
+    return results;
+}
 
-    res.json(results);
-  } catch (error) {
-    console.error("Scraping error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+function normalizeSize(size) {
+    if (!size) return "";
+    
+    // Clean up
+    size = size.trim();
+    
+    // Check if it's already in ML or L
+    const match = size.match(/(\d+(?:\.\d+)?)\s*(ml|l|liters|litres)/i);
+    
+    if (match) {
+        let qty = parseFloat(match[1]);
+        const unit = match[2].toLowerCase();
+        
+        if (unit.startsWith('l')) {
+            qty = qty * 1000;
+        }
+        
+        return `${qty}ml`;
+    }
+    
+    // If it's just a number like "750", append ml
+    if (/^\d+$/.test(size)) {
+        return `${size}ml`;
+    }
+    
+    return size;
+}
 
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {

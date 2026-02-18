@@ -290,7 +290,14 @@ async function scrapeABLiquor() {
   }
 }
 
-module.exports = { scrapeABLiquor };
+
+module.exports = { 
+    scrapeABLiquor,
+    isMezcal,
+    extractBrand,
+    extractSize,
+    extractMaguey
+};
 
 // For testing directly:
 if (require.main === module) {
@@ -301,3 +308,4 @@ if (require.main === module) {
         console.log("Total items:", items.length);
     })();
 }
+

@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+
 
 const AB_LIQUOR_URL = "https://abliquor2.com/order/ab-liquor-2-1809-w-anderson-ln-unit-1";
 
@@ -112,12 +112,14 @@ function extractMaguey(name) {
 
 async function scrapeABLiquor() {
   console.log("Starting AB Liquor scraper...");
+  const puppeteer = require('puppeteer');
   let browser;
   try {
       browser = await puppeteer.launch({
         headless: "new",
         args: ['--no-sandbox', '--disable-setuid-sandbox'] // standard args for running on some environments
       });
+
       
       const page = await browser.newPage();
       

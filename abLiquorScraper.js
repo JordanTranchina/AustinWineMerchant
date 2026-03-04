@@ -1,4 +1,6 @@
-const puppeteer = require('puppeteer');
+import puppeteer from 'puppeteer';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 const AB_LIQUOR_URL = "https://abliquor2.com/order/ab-liquor-2-1809-w-anderson-ln-unit-1";
 
@@ -276,7 +278,6 @@ async function scrapeABLiquor() {
                 await page.screenshot({ path: 'ab_liquor_error.png' });
                 console.log("Error screenshot saved to ab_liquor_error.png");
                 const html = await page.content();
-                const fs = require('fs');
                 fs.writeFileSync('ab_liquor_dump.html', html);
                 console.log("HTML dump saved to ab_liquor_dump.html");
             }
@@ -290,11 +291,11 @@ async function scrapeABLiquor() {
   }
 }
 
-module.exports = { scrapeABLiquor };
+export { scrapeABLiquor };
 
 // For testing directly:
-if (require.main === module) {
-    // Mock the browser environment check if needed or just run
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
     (async () => {
         const items = await scrapeABLiquor();
         console.log("Final items:", items.slice(0, 5)); // Print first 5

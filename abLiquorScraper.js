@@ -291,7 +291,7 @@ async function scrapeABLiquor() {
   }
 }
 
-export { scrapeABLiquor };
+export { scrapeABLiquor, isMezcal, extractBrand, extractSize, extractMaguey };
 
 // For testing directly:
 const __filename = fileURLToPath(import.meta.url);

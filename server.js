@@ -16,32 +16,33 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
 
-
 app.get("/api/inventory", async (req, res) => {
   try {
-    // Run both scrapers in parallel
-    const [austinWineResults, abLiquorResults] = await Promise.all([scrapeAustinWineMerchant(), scrapeABLiquor()]);
+    const { supabase } = await import('./db.js');
+    
+    // Fetch in-stock bottles from Supabase
+    const { data: bottles, error } = await supabase
+      .from('mezcal_bottles')
+      .select('*')
+      .eq('is_in_stock', true);
 
-    // Combine results
-    const combinedResults = [...austinWineResults, ...abLiquorResults];
+    if (error) {
+      throw error;
+    }
 
-    // Sort by price (optional but good for UX)
-    // Prices are strings "$123.45", need to parse
-    combinedResults.sort((a, b) => {
+    // Sort by price
+    bottles.sort((a, b) => {
       const priceA = parseFloat(a.price.replace(/[^0-9.]/g, "")) || 0;
       const priceB = parseFloat(b.price.replace(/[^0-9.]/g, "")) || 0;
       return priceA - priceB;
     });
 
-    res.json(combinedResults);
+    res.json(bottles);
   } catch (error) {
-    console.error("Scraping error:", error);
-    // If one fails, try to return at least something? Or error out?
-    // For now, fail if critical.
+    console.error("Database query error:", error);
     res.status(500).json({ error: error.message });
   }
 });
-
 // Extracted the original logic into a function
 async function scrapeAustinWineMerchant() {
   const url = "https://www.theaustinwinemerchant.com/spirits.html";
